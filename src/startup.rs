@@ -1,6 +1,6 @@
 use crate::configuration::DatabaseSettings;
 use crate::configuration::Settings;
-use crate::routes::health_check;
+use crate::routes::{health_check, order};
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
 use sqlx::postgres::PgPoolOptions;
@@ -49,7 +49,7 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
 }
 
 // We need to define a wrapper type in order to retrieve the URL
-// in the `subscribe` handler.
+// in the `order` handler.
 // Retrieval from the context, in actix-web, is type-based: using
 // a raw `String` would expose us to conflicts.
 pub struct ApplicationBaseUrl(pub String);
@@ -71,7 +71,10 @@ pub fn run(
         App::new()
             // Middlewares are added using the `wrap` method on `App`
             .wrap(TracingLogger::default())
+            // health check route
             .route("/health_check", web::get().to(health_check))
+            // place an order
+            .route("/order", web::post().to(order))
             // Get a pointer copy and attach it to the application state
             .app_data(db_pool.clone())
             .app_data(base_url.clone())
