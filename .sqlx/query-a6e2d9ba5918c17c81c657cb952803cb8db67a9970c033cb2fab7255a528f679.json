@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n    INSERT INTO orders (id, tableNo, item, quantity, preparation_time, placed_at)\n    VALUES ($1, $2, $3, $4, $5, $6)\n    ",
+  "query": "\n    INSERT INTO orders (id, table_no, item, quantity, preparation_time, placed_at)\n    VALUES ($1, $2, $3, $4, $5, $6)\n    ",
   "describe": {
     "columns": [],
     "parameters": {
@@ -15,5 +15,5 @@
     },
     "nullable": []
   },
-  "hash": "b6ea858eab4607a78140c0f0fe4b83dd3db3526e4de5b465eae94e0c3777ae75"
+  "hash": "a6e2d9ba5918c17c81c657cb952803cb8db67a9970c033cb2fab7255a528f679"
 }
