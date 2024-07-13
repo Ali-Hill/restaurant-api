@@ -4,7 +4,7 @@ use crate::client::{gen_body, spawn_app};
 async fn order_returns_a_200_for_valid_form_data() {
     // Arrange
     let app = spawn_app().await;
-    let body = gen_body(1, "hamburger", 1, 5);
+    let body = gen_body(1, "hamburger", 1);
 
     // Act
     let response = app.post_order(body).await;
@@ -17,7 +17,7 @@ async fn order_returns_a_200_for_valid_form_data() {
 async fn parallel_orders_succeed_and_persist() {
     // Arrange
     let app = spawn_app().await;
-    let body = gen_body(1, "hamburger", 1, 5);
+    let body = gen_body(1, "hamburger", 1);
     let num_bodies = 20;
 
     // Checking that 20 orders succeed
@@ -44,7 +44,7 @@ async fn parallel_orders_succeed_and_persist() {
         assert_eq!(s.table_no, 1);
         assert_eq!(s.item, "hamburger");
         assert_eq!(s.quantity, 1);
-        assert_eq!(s.preparation_time, 5);
+        assert_eq!((5..15).contains(&s.preparation_time), true);
     }
 }
 
@@ -52,8 +52,8 @@ async fn parallel_orders_succeed_and_persist() {
 async fn order_multiple_fail() {
     // Arrange
     let app = spawn_app().await;
-    let body = gen_body(1, "hamburger", 1, 5);
-    let fail_body = gen_body(1, "unicorn", 1, 5);
+    let body = gen_body(1, "hamburger", 1);
+    let fail_body = gen_body(1, "unicorn", 1);
 
     let bodies = vec![body, fail_body];
 
@@ -77,7 +77,7 @@ async fn order_multiple_fail() {
 async fn order_persists() {
     // Arrange
     let app = spawn_app().await;
-    let body = gen_body(1, "hamburger", 1, 5);
+    let body = gen_body(1, "hamburger", 1);
 
     // Act
     let response = app.post_order(body).await;
@@ -93,7 +93,7 @@ async fn order_persists() {
     assert_eq!(saved.table_no, 1);
     assert_eq!(saved.item, "hamburger");
     assert_eq!(saved.quantity, 1);
-    assert_eq!(saved.preparation_time, 5);
+    assert_eq!((5..15).contains(&saved.preparation_time), true);
 }
 
 #[actix_rt::test]
@@ -101,19 +101,9 @@ async fn order_fails_when_missing_data() {
     // Arrange
     let app = spawn_app().await;
     let test_cases = vec![
-        (
-            "item=hamburger&quantity=1&preparation_time=5",
-            "missing table number",
-        ),
+        ("item=hamburger&quantity=1", "missing table number"),
         ("table_no=1&quantity=1&preparation_time=5", "missing item"),
-        (
-            "table_no=1&item=hamburger&preparation_time=5",
-            "missing quantity",
-        ),
-        (
-            "table_no=1&item=hamburger&quantity=1",
-            "missing preparation time",
-        ),
+        ("table_no=1&item=hamburger", "missing quantity"),
     ];
 
     // Act
@@ -135,7 +125,7 @@ async fn order_fails_when_missing_data() {
 async fn order_fails_with_invalid_item() {
     // Arrange
     let app = spawn_app().await;
-    let body = gen_body(1, "unicorn", 1, 5);
+    let body = gen_body(1, "unicorn", 1);
 
     // Act
     let response = app.post_order(body).await;
@@ -149,9 +139,8 @@ async fn order_fails_with_negative_numbers() {
     // Arrange
     let app = spawn_app().await;
     let test_cases = vec![
-        (gen_body(-1, "hamburger", 1, 5), "Negative table number"),
-        (gen_body(1, "hamburger", -2, 5), "Negative quantity"),
-        (gen_body(1, "hamburger", 1, -5), "Negative preparation time"),
+        (gen_body(-1, "hamburger", 1), "Negative table number"),
+        (gen_body(1, "hamburger", -2), "Negative quantity"),
     ];
 
     // Act

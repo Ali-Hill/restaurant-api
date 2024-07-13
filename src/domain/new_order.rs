@@ -6,5 +6,4 @@ pub struct NewOrder {
     pub table_no: Nat,
     pub item: Item,
     pub quantity: Nat,
-    pub preparation_time: Nat,
 }

@@ -84,11 +84,8 @@ impl TestClient {
     }
 }
 
-pub fn gen_body(table_no: i32, item: &str, quantity: i32, preparation_time: i32) -> String {
-    format!(
-        "table_no={}&item={}&quantity={}&preparation_time={}",
-        table_no, item, quantity, preparation_time,
-    )
+pub fn gen_body(table_no: i32, item: &str, quantity: i32) -> String {
+    format!("table_no={}&item={}&quantity={}", table_no, item, quantity,)
 }
 
 // Launch our application in the background
@@ -154,10 +151,7 @@ mod tests {
 
     #[test]
     fn gen_body_is_eq() {
-        let body = gen_body(1, "hamburger", 1, 5);
-        assert_eq!(
-            body,
-            "table_no=1&item=hamburger&quantity=1&preparation_time=5"
-        );
+        let body = gen_body(1, "hamburger", 1);
+        assert_eq!(body, "table_no=1&item=hamburger&quantity=1");
     }
 }

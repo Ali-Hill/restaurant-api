@@ -2,6 +2,7 @@ use crate::domain::{Item, Nat, NewOrder};
 use crate::startup::ApplicationBaseUrl;
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
+use rand::Rng;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -10,7 +11,6 @@ pub struct FormData {
     table_no: i32,
     item: String,
     quantity: i32,
-    preparation_time: i32,
 }
 
 impl TryFrom<FormData> for NewOrder {
@@ -20,12 +20,10 @@ impl TryFrom<FormData> for NewOrder {
         let table_no = Nat::parse(value.table_no)?;
         let item = Item::parse(value.item)?;
         let quantity = Nat::parse(value.quantity)?;
-        let preparation_time = Nat::parse(value.preparation_time)?;
         Ok(Self {
             table_no,
             item,
             quantity,
-            preparation_time,
         })
     }
 }
@@ -37,7 +35,6 @@ impl TryFrom<FormData> for NewOrder {
     order_tableNo = %form.table_no,
     order_item = %form.item,
     order_quantity = %form.quantity,
-    order_preparation_time = %form.preparation_time
   )
 )]
 
@@ -60,6 +57,8 @@ pub async fn order(
 #[tracing::instrument(name = "Adding new order to database", skip(order, pool))]
 pub async fn insert_order(pool: &PgPool, order: &NewOrder) -> Result<(), sqlx::Error> {
     let order_id = Uuid::new_v4();
+    let preparation_time = rand::thread_rng().gen_range(5..15);
+
     sqlx::query!(
         r#"
     INSERT INTO orders (id, table_no, item, quantity, preparation_time, placed_at)
@@ -69,7 +68,7 @@ pub async fn insert_order(pool: &PgPool, order: &NewOrder) -> Result<(), sqlx::E
         order.table_no.as_ref(),
         order.item.as_ref(),
         order.quantity.as_ref(),
-        order.preparation_time.as_ref(),
+        preparation_time,
         Utc::now()
     )
     .execute(pool)
