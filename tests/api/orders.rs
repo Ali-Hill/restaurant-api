@@ -171,7 +171,7 @@ async fn multi_item_order_succeeds_and_persists() {
         ("cola", 1),
     ]
     .to_vec();
-    // need to clone items for late comparison
+    // need to clone items for later comparison
     let bodies = gen_multi_item_bodies(table_no, items.clone());
 
     let num_bodies = bodies.len();

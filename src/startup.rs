@@ -1,6 +1,6 @@
 use crate::configuration::DatabaseSettings;
 use crate::configuration::Settings;
-use crate::routes::{health_check, order};
+use crate::routes::{health_check, order, query_with_table_number};
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
 use sqlx::postgres::PgPoolOptions;
@@ -75,6 +75,15 @@ pub fn run(
             .route("/health_check", web::get().to(health_check))
             // place an order
             .route("/order", web::post().to(order))
+            // query orders for a table in the database
+            .route("/query_table/{table_no}", web::get().to(query_with_table_number))
+            // query a specific item for a table in the database
+            // .route("/query_item/{table_no}/{item}")
+            // query a specific item using unique id
+            // .route("/query_id/{id}")
+            // query for all items in the database
+            // .route("/query_all")
+            //
             // Get a pointer copy and attach it to the application state
             .app_data(db_pool.clone())
             .app_data(base_url.clone())

@@ -82,6 +82,15 @@ impl TestClient {
 
         result
     }
+
+    pub async fn query_table(&self, table_no: i32) -> reqwest::Response {
+        reqwest::Client::new()
+            .get(&format!("{}/query_table/{}", &self.address, table_no))
+            .send()
+            .await
+            .expect("Failed to get data.")
+    }
+
 }
 
 pub fn gen_body(table_no: i32, item: &str, quantity: i32) -> String {
