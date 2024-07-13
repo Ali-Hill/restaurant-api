@@ -88,6 +88,16 @@ pub fn gen_body(table_no: i32, item: &str, quantity: i32) -> String {
     format!("table_no={}&item={}&quantity={}", table_no, item, quantity,)
 }
 
+pub fn gen_multi_item_bodies(table_no: i32, items: Vec<(&str, i32)>) -> Vec<String> {
+    let mut orders = Vec::new();
+
+    for item in items {
+        orders.push(gen_body(table_no, &item.0, item.1));
+    }
+
+    orders
+}
+
 // Launch our application in the background
 pub async fn spawn_app() -> TestClient {
     // The first time `initialize` is invoked the code in `TRACING` is executed.
@@ -147,11 +157,29 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
 
 #[cfg(test)]
 mod tests {
-    use crate::client::gen_body;
+    use crate::client::{gen_body, gen_multi_item_bodies};
 
     #[test]
     fn gen_body_is_eq() {
         let body = gen_body(1, "hamburger", 1);
         assert_eq!(body, "table_no=1&item=hamburger&quantity=1");
+    }
+
+    #[test]
+    fn gen_multi_item_body_test() {
+        let table_no = 1;
+        let items = [("hamburger", 2), ("fries", 2), ("water", 1), ("cola", 1)].to_vec();
+
+        let bodies = gen_multi_item_bodies(table_no, items);
+
+        let expected_result = [
+            "table_no=1&item=hamburger&quantity=2",
+            "table_no=1&item=fries&quantity=2",
+            "table_no=1&item=water&quantity=1",
+            "table_no=1&item=cola&quantity=1",
+        ]
+        .to_vec();
+
+        assert_eq!(bodies, expected_result);
     }
 }

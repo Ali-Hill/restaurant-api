@@ -1,4 +1,4 @@
-use crate::client::{gen_body, spawn_app};
+use crate::client::{gen_body, gen_multi_item_bodies, spawn_app};
 
 #[actix_rt::test]
 async fn order_returns_a_200_for_valid_form_data() {
@@ -155,5 +155,71 @@ async fn order_fails_with_negative_numbers() {
             "The API did not fail with 400 Bad Request when the payload was {}.",
             error_message
         )
+    }
+}
+
+#[actix_rt::test]
+async fn multi_item_order_succeeds_and_persists() {
+    // Arrange
+    let app = spawn_app().await;
+    let table_no = 3;
+    let items = [
+        ("hamburger", 1),
+        ("hamburger", 1),
+        ("fries", 2),
+        ("water", 1),
+        ("cola", 1),
+    ]
+    .to_vec();
+    // need to clone items for late comparison
+    let bodies = gen_multi_item_bodies(table_no, items.clone());
+
+    let num_bodies = bodies.len();
+
+    // Act
+    let response = app.post_parallel_orders(bodies).await;
+
+    let saved = sqlx::query!("SELECT table_no, item, quantity, preparation_time FROM orders",)
+        .fetch_all(&app.db_pool)
+        .await
+        .expect("Failed to fetch inserted order.");
+
+    // Assert
+
+    // All orders succeeded
+    assert_eq!(true, response);
+
+    // Number of items in database is the same as the number of bodies
+    assert_eq!(num_bodies, saved.len());
+
+    // All orders persist
+
+    // Since we do not know the order of saved due to parallel requests we have to be the same we have
+    // check if items contain the expected order details.
+    // The issue is that a client may be able to order the same item twice instead of
+    // setting the quantity to 2. To test that the item is stored the correct amount times
+    // we use a filter to count the number of times each item is stored.
+
+    let item_counter = items.clone();
+
+    // Check that each pair of item and quantity are contained the same number of times
+    // in both the saved response and the item vector
+    for i in items {
+        assert_eq!(
+            saved
+                .iter()
+                .filter(|s| (s.item == i.0 && s.quantity == i.1))
+                .count(),
+            item_counter
+                .iter()
+                .filter(|g| (g.0 == i.0 && g.1 == i.1))
+                .count()
+        );
+    }
+
+    // Check that all table numbers are correct and that preparation time has been set
+    for s in saved {
+        assert_eq!(s.table_no, table_no);
+        assert_eq!((5..15).contains(&s.preparation_time), true);
     }
 }
