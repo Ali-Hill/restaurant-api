@@ -1,4 +1,4 @@
-use crate::helpers::spawn_app;
+use crate::client::spawn_app;
 
 #[actix_rt::test]
 async fn health_check_works() {

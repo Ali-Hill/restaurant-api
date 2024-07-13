@@ -1946,6 +1946,7 @@ dependencies = [
  "claim",
  "config",
  "fake",
+ "futures",
  "linkify",
  "log",
  "once_cell",

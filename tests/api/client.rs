@@ -3,6 +3,7 @@ use restaurant::configuration::{get_configuration, DatabaseSettings};
 use restaurant::startup::{get_connection_pool, Application};
 use restaurant::telemetry::{get_user, init_user};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
+use tokio;
 use uuid::Uuid;
 
 // Ensure that the `tracing` stack is only initialised once using `once_cell`
@@ -21,13 +22,13 @@ static TRACING: Lazy<()> = Lazy::new(|| {
     };
 });
 
-pub struct TestApp {
+pub struct TestClient {
     pub address: String,
     pub db_pool: PgPool,
     pub port: u16,
 }
 
-impl TestApp {
+impl TestClient {
     pub async fn post_order(&self, body: String) -> reqwest::Response {
         reqwest::Client::new()
             .post(&format!("{}/order", &self.address))
@@ -37,10 +38,61 @@ impl TestApp {
             .await
             .expect("Failed to execute request.")
     }
+
+    // Used to test app can handle multiple client requests at once
+    // Also used to create post request with multiple items
+    // returns false if any future returns a status code other than 200
+    pub async fn post_parallel_orders(&self, bodies: Vec<String>) -> bool {
+        let client = reqwest::Client::new();
+
+        let mut handles = Vec::new();
+
+        for body in bodies {
+            let posturl = format!("{}/order", &self.address);
+            let client = client.clone();
+            let handle = tokio::spawn(async move {
+                client
+                    .post(&posturl)
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .body(body)
+                    .send()
+                    .await
+            });
+            handles.push(handle);
+        }
+
+        // TODO: check the length of the responses is the same length as the bodies
+        let responses = futures::future::join_all(handles).await;
+
+        let mut result = true;
+
+        // TODO: add error handling for cases when no response
+        for response in responses {
+            match response {
+                Ok(Ok(res)) => {
+                    if res.status() != reqwest::StatusCode::OK {
+                        result = false;
+                        break;
+                    }
+                }
+                Ok(Err(_)) => result = false,
+                Err(_) => result = false,
+            }
+        }
+
+        result
+    }
+}
+
+pub fn gen_body(table_no: i32, item: &str, quantity: i32, preparation_time: i32) -> String {
+    format!(
+        "table_no={}&item={}&quantity={}&preparation_time={}",
+        table_no, item, quantity, preparation_time,
+    )
 }
 
 // Launch our application in the background
-pub async fn spawn_app() -> TestApp {
+pub async fn spawn_app() -> TestClient {
     // The first time `initialize` is invoked the code in `TRACING` is executed.
     // All other invocations will instead skip execution.
     Lazy::force(&TRACING);
@@ -66,7 +118,7 @@ pub async fn spawn_app() -> TestApp {
     let address = format!("http://127.0.0.1:{}", application.port());
     let _ = tokio::spawn(application.run_until_stopped());
 
-    TestApp {
+    TestClient {
         address,
         port: application_port,
         db_pool: get_connection_pool(&configuration.database),
@@ -94,4 +146,18 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .expect("Failed to migrate the database");
 
     connection_pool
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::client::gen_body;
+
+    #[test]
+    fn gen_body_is_eq() {
+        let body = gen_body(1, "hamburger", 1, 5);
+        assert_eq!(
+            body,
+            "table_no=1&item=hamburger&quantity=1&preparation_time=5"
+        );
+    }
 }
