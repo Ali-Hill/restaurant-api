@@ -30,7 +30,6 @@ impl Application {
         let server = run(
             listener,
             connection_pool,
-            configuration.application.base_url,
         )?;
 
         Ok(Self { port, server })
@@ -51,25 +50,15 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
     PgPoolOptions::new().connect_lazy_with(configuration.with_db())
 }
 
-// We need to define a wrapper type in order to retrieve the URL
-// in the `order` handler.
-// Retrieval from the context, in actix-web, is type-based: using
-// a raw `String` would expose us to conflicts.
-pub struct ApplicationBaseUrl(pub String);
-
-// We need to mark `run` as public.
-// It is no longer a binary entrypoint, therefore we can mark it as async // without having to use any proc-macro incantation.
 pub fn run(
     listener: TcpListener,
     db_pool: PgPool,
-    base_url: String,
 ) -> Result<Server, std::io::Error> {
     // Wrap the pool using web::Data, which boils down to an Arc smart pointer
     let db_pool = web::Data::new(db_pool);
     // Capture `connection` from the surrounding environment
     // move converts any variables captured by reference or mutable reference
-    // to variables captured by value.
-    let base_url = web::Data::new(ApplicationBaseUrl(base_url));
+    // to variables captured by value.a
     let server = HttpServer::new(move || {
         App::new()
             // Middlewares are added using the `wrap` method on `App`
@@ -101,7 +90,6 @@ pub fn run(
             )
             // Get a pointer copy and attach it to the application state
             .app_data(db_pool.clone())
-            .app_data(base_url.clone())
     })
     .listen(listener)?
     .run();
