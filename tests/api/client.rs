@@ -25,7 +25,6 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 pub struct TestClient {
     pub address: String,
     pub db_pool: PgPool,
-    pub port: u16,
 }
 
 impl TestClient {
@@ -37,50 +36,6 @@ impl TestClient {
             .send()
             .await
             .expect("Failed to execute request.")
-    }
-
-    // Used to test app can handle multiple client requests at once
-    // Also used to create post request with multiple items
-    // returns false if any future returns a status code other than 200
-    pub async fn post_parallel_orders(&self, bodies: Vec<String>) -> bool {
-        let client = reqwest::Client::new();
-
-        let mut handles = Vec::new();
-
-        for body in bodies {
-            let posturl = format!("{}/order", &self.address);
-            let client = client.clone();
-            let handle = tokio::spawn(async move {
-                client
-                    .post(&posturl)
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .body(body)
-                    .send()
-                    .await
-            });
-            handles.push(handle);
-        }
-
-        // TODO: check the length of the responses is the same length as the bodies
-        let responses = futures::future::join_all(handles).await;
-
-        let mut result = true;
-
-        // TODO: add error handling for cases when no response
-        for response in responses {
-            match response {
-                Ok(Ok(res)) => {
-                    if res.status() != reqwest::StatusCode::OK {
-                        result = false;
-                        break;
-                    }
-                }
-                Ok(Err(_)) => result = false,
-                Err(_) => result = false,
-            }
-        }
-
-        result
     }
 
     pub async fn query_table(&self, table_no: i32) -> reqwest::Response {
@@ -116,6 +71,83 @@ impl TestClient {
             .send()
             .await
             .expect("Failed to get data.")
+    }
+
+    // Used to test app can handle multiple client requests at once
+    // Also used to create post request with multiple items
+    // returns false if any future returns a status code other than 200
+    pub async fn post_parallel_orders(&self, bodies: Vec<String>) -> bool {
+        let client = reqwest::Client::new();
+
+        let mut handles = Vec::new();
+
+        for body in bodies {
+            let posturl = format!("{}/order", &self.address);
+            let client = client.clone();
+            let handle = tokio::spawn(async move {
+                client
+                    .post(&posturl)
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .body(body)
+                    .send()
+                    .await
+            });
+            handles.push(handle);
+        }
+
+        let responses = futures::future::join_all(handles).await;
+
+        let mut result = true;
+
+        // TODO: add error handling for cases when no response
+        for response in responses {
+            match response {
+                Ok(Ok(res)) => {
+                    if res.status() != reqwest::StatusCode::OK {
+                        result = false;
+                        break;
+                    }
+                }
+                Ok(Err(_)) => result = false,
+                Err(_) => result = false,
+            }
+        }
+
+        result
+    }
+
+    // TODO: Add proper error handling instead of panic
+    pub async fn parallel_get_request(&self, table_no: i32) -> Vec<reqwest::Response> {
+        let client = reqwest::Client::new();
+
+        let mut handles = Vec::new();
+
+        for _i in 1..20 {
+            let get_url = format!("{}/query_table/{}", &self.address, table_no);
+            let client = client.clone();
+            let handle = tokio::spawn(async move {
+                client
+                    .get(get_url)
+                    .send()
+                    .await
+                    .expect("Failed to get data.")
+            });
+            handles.push(handle);
+        }
+
+        let responses = futures::future::join_all(handles).await;
+
+        let mut result = Vec::new();
+
+        // TODO: add error handling for cases when no response
+        for response in responses {
+            match response {
+                Ok(res) => result.push(res),
+                Err(_) => panic!("Response not given in parallel get"),
+            }
+        }
+
+        result
     }
 }
 
@@ -155,14 +187,12 @@ pub async fn spawn_app() -> TestClient {
     let application = Application::build(configuration.clone())
         .await
         .expect("Failed to build application.");
-    let application_port = application.port();
     // Get the port before spawning the application
     let address = format!("http://127.0.0.1:{}", application.port());
     let _ = tokio::spawn(application.run_until_stopped());
 
     TestClient {
         address,
-        port: application_port,
         db_pool: get_connection_pool(&configuration.database),
     }
 }

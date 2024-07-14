@@ -1,5 +1,4 @@
 use crate::domain::{Item, Nat, NewOrder};
-use crate::startup::ApplicationBaseUrl;
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use rand::Rng;
@@ -30,7 +29,7 @@ impl TryFrom<FormData> for NewOrder {
 
 #[tracing::instrument(
   name = "Adding a new subscriber",
-  skip(form, pool, base_url),
+  skip(form, pool),
   fields(
     order_tableNo = %form.table_no,
     order_item = %form.item,
@@ -38,11 +37,7 @@ impl TryFrom<FormData> for NewOrder {
   )
 )]
 
-pub async fn order(
-    form: web::Form<FormData>,
-    pool: web::Data<PgPool>,
-    base_url: web::Data<ApplicationBaseUrl>,
-) -> HttpResponse {
+pub async fn order(form: web::Form<FormData>, pool: web::Data<PgPool>) -> HttpResponse {
     let new_order = match form.0.try_into() {
         Ok(form) => form,
         Err(_) => return HttpResponse::BadRequest().finish(),

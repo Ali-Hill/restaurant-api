@@ -1,4 +1,4 @@
-use crate::client::{gen_body, gen_multi_item_bodies, spawn_app};
+use crate::client::{gen_multi_item_bodies, spawn_app};
 use restaurant::domain::DatabaseResponse;
 use uuid::Uuid;
 
@@ -392,4 +392,56 @@ async fn retrieving_id_not_in_table_returns_empty() {
 
     // Assert that the response is empty
     assert! {saved.is_empty()}
+}
+
+#[actix_rt::test]
+async fn successfully_retrieve_parallel_orders_for_a_specific_table() {
+    // Arrange
+    let app = spawn_app().await;
+
+    // Add Data to the database that we don't want to fetch
+    let wrong_table_no = 1;
+    let wrong_items = [("hamburger", 1), ("hamburger", 1), ("cola", 1)].to_vec();
+    // need to clone items for late comparison
+    let wrong_bodies = gen_multi_item_bodies(wrong_table_no, wrong_items);
+
+    // Add Data to the database that we want to fetch
+    let table_no = 3;
+    let items = [("fries", 1), ("water", 1)].to_vec();
+    let bodies = gen_multi_item_bodies(table_no, items.clone());
+
+    // Act
+
+    // Add table 1 orders
+    let table_1_response = app.post_parallel_orders(wrong_bodies).await;
+
+    // Add table 3 orders
+    let table_3_response = app.post_parallel_orders(bodies).await;
+
+    // All orders succeeded
+    assert_eq!(true, table_1_response);
+    assert_eq!(true, table_3_response);
+
+    // Retrieve parallel get responses for orders for table 3
+    let responses = app.parallel_get_request(table_no).await;
+
+    // Check that all responses have expected data
+    for response in responses {
+        // Assert OK response
+        assert!(response.status().is_success());
+
+        // retrieved json
+        let saved = response.json::<Vec<DatabaseResponse>>().await.unwrap();
+
+        // get expected result
+        let expected_result = gen_expected_result(table_no, items.clone());
+
+        // Asset that the response is equivalent to the expected result
+        assert_eq!(check_response(&saved, expected_result), true);
+
+        // Check that the preparation time has been set
+        for s in saved {
+            assert_eq!((5..15).contains(&s.preparation_time), true);
+        }
+    }
 }
