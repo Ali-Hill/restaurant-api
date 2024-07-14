@@ -10,7 +10,7 @@ pub struct Item(String);
  */
 
 // Valid menu items used only in this module
-const VALID_ITEMS: [&'static str; 4] = ["hamburger", "fries", "cola", "water"];
+const VALID_ITEMS: [&str; 4] = ["hamburger", "fries", "cola", "water"];
 
 impl Item {
     // Returns an instance of `Item` if the input satisfies validation
@@ -23,7 +23,7 @@ impl Item {
         let contains_forbidden_characters = s.chars().any(|g| forbidden_characters.contains(&g));
 
         // Checking if the item is in the valid item list
-        let valid_item = VALID_ITEMS.iter().any(|&g| g == &s);
+        let valid_item = VALID_ITEMS.iter().any(|&g| g == s);
 
         if is_empty_or_whitespace || contains_forbidden_characters {
             Err(format!(
