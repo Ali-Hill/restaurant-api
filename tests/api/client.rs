@@ -91,6 +91,32 @@ impl TestClient {
             .expect("Failed to get data.")
     }
 
+    pub async fn query_all(&self) -> reqwest::Response {
+        reqwest::Client::new()
+            .get(&format!("{}/query_all", &self.address))
+            .send()
+            .await
+            .expect("Failed to get data.")
+    }
+
+    pub async fn query_item(&self, table_no: i32, item: String) -> reqwest::Response {
+        reqwest::Client::new()
+            .get(&format!(
+                "{}/query_item/{}/{}",
+                &self.address, table_no, item
+            ))
+            .send()
+            .await
+            .expect("Failed to get data.")
+    }
+
+    pub async fn query_id(&self, id: Uuid) -> reqwest::Response {
+        reqwest::Client::new()
+            .get(&format!("{}/query_id/{}", &self.address, id))
+            .send()
+            .await
+            .expect("Failed to get data.")
+    }
 }
 
 pub fn gen_body(table_no: i32, item: &str, quantity: i32) -> String {
