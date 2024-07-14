@@ -27,10 +27,7 @@ impl Application {
         );
         let listener = TcpListener::bind(address)?;
         let port = listener.local_addr().unwrap().port();
-        let server = run(
-            listener,
-            connection_pool,
-        )?;
+        let server = run(listener, connection_pool)?;
 
         Ok(Self { port, server })
     }
@@ -50,10 +47,7 @@ pub fn get_connection_pool(configuration: &DatabaseSettings) -> PgPool {
     PgPoolOptions::new().connect_lazy_with(configuration.with_db())
 }
 
-pub fn run(
-    listener: TcpListener,
-    db_pool: PgPool,
-) -> Result<Server, std::io::Error> {
+pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
     // Wrap the pool using web::Data, which boils down to an Arc smart pointer
     let db_pool = web::Data::new(db_pool);
     // Capture `connection` from the surrounding environment

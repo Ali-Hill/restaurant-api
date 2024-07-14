@@ -6,6 +6,6 @@ CREATE TABLE orders(
    table_no integer NOT NULL,
    item TEXT NOT NULL,
    quantity integer NOT NULL,
-   preparation_time integer NOT Null,
+   preparation_time integer NOT NULL,
    placed_at timestamptz NOT NULL
 );
