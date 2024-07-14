@@ -73,6 +73,25 @@ impl TestClient {
             .expect("Failed to get data.")
     }
 
+    pub async fn delete_with_id(&self, id: Uuid) -> reqwest::Response {
+        reqwest::Client::new()
+            .delete(&format!("{}/delete/{}", &self.address, id))
+            .send()
+            .await
+            .expect("Failed to delete data.")
+    }
+
+    pub async fn delete_with_item(&self, table_no: i32, item: String) -> reqwest::Response {
+        reqwest::Client::new()
+            .delete(&format!(
+                "{}/delete_item/{}/{}",
+                &self.address, table_no, item
+            ))
+            .send()
+            .await
+            .expect("Failed to delete data.")
+    }
+
     // Used to test app can handle multiple client requests at once
     // Also used to create post request with multiple items
     // returns false if any future returns a status code other than 200
@@ -131,6 +150,40 @@ impl TestClient {
                     .send()
                     .await
                     .expect("Failed to get data.")
+            });
+            handles.push(handle);
+        }
+
+        let responses = futures::future::join_all(handles).await;
+
+        let mut result = Vec::new();
+
+        // TODO: add error handling for cases when no response
+        for response in responses {
+            match response {
+                Ok(res) => result.push(res),
+                Err(_) => panic!("Response not given in parallel get"),
+            }
+        }
+
+        result
+    }
+
+    // TODO: Add proper error handling instead of panic
+    pub async fn parallel_delete_request(&self, ids: Vec<Uuid>) -> Vec<reqwest::Response> {
+        let client = reqwest::Client::new();
+
+        let mut handles = Vec::new();
+
+        for id in ids {
+            let get_url = format!("{}/delete/{}", &self.address, id);
+            let client = client.clone();
+            let handle = tokio::spawn(async move {
+                client
+                    .delete(&get_url)
+                    .send()
+                    .await
+                    .expect("Failed to delete data.")
             });
             handles.push(handle);
         }

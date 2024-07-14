@@ -1,7 +1,8 @@
 use crate::configuration::DatabaseSettings;
 use crate::configuration::Settings;
 use crate::routes::{
-    health_check, order, query_all, query_with_id, query_with_item_name, query_with_table_number,
+    delete_with_id, delete_with_item_name, health_check, order, query_all, query_with_id,
+    query_with_item_name, query_with_table_number,
 };
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
@@ -90,6 +91,13 @@ pub fn run(
             .route(
                 "/query_table/{table_no}",
                 web::get().to(query_with_table_number),
+            )
+            // delete item using unique id
+            .route("/delete/{id}", web::delete().to(delete_with_id))
+            // delete all occurences of an item from a specified table
+            .route(
+                "/delete_item/{table_no}/{item}",
+                web::delete().to(delete_with_item_name),
             )
             // Get a pointer copy and attach it to the application state
             .app_data(db_pool.clone())
